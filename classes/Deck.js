@@ -5,7 +5,7 @@ class Deck {
     }
   
     initializeDeck(images, suit) {
-      const values = ['6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+      const values = ['A','6', '7', '8', '9', '10', 'J', 'Q', 'K'];
       for (let i = 0; i < values.length; i++) {
         this.cards.push(new Card(suit, values[i], images[i]));
       }
