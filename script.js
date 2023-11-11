@@ -4,6 +4,7 @@ let botCards = []
 let fullDeck = [];
 let ImgCalodes;
 let turn = "player";
+let trump;
 
 function switchTurn() {
     turn = (turn === "player") ? "bot" : "player";
@@ -31,7 +32,6 @@ function preload() {
     }
 }
 
-
 function setup() {
     createCanvas(900, 800);
     shuffleArray(fullDeck);
@@ -40,24 +40,30 @@ function setup() {
     botCards = [];
 
     for (let i = 0; i < 6; i++) {
-        playerCards.push(fullDeck.pop());
-        botCards.push(fullDeck.pop());
+        playerCards.push(fullDeck.shift());
+        botCards.push(fullDeck.shift());
     }
 
-    // Sorting by suit and then by value
-    playerCards.sort((a, b) => {
-        if (a.suit === b.suit) {
-            return a.value - b.value;
-        }
-        return a.suit.localeCompare(b.suit);
-    });
+    // Access the last card to set it as the trump
+    trump = fullDeck[fullDeck.length - 1];
 
-    botCards.sort((a, b) => {
-        if (a.suit === b.suit) {
-            return a.value - b.value;
+    // Custom sorting function
+    function sortCards(a, b) {
+        // Check if either card is a trump
+        if (a.suit === trump.suit && b.suit !== trump.suit) {
+            return 1; // a is a trump, so it comes first
+        } else if (b.suit === trump.suit && a.suit !== trump.suit) {
+            return -1; // b is a trump, so it comes first
+        } else if (a.suit === b.suit) {
+            return a.value - b.value; // Same suit, sort by value
+        } else {
+            return a.suit.localeCompare(b.suit); // Different suits, sort alphabetically
         }
-        return a.suit.localeCompare(b.suit);
-    });
+    }
+
+    // Apply the sorting
+    playerCards.sort(sortCards);
+    botCards.sort(sortCards);
 
     dealCards();
 }
@@ -65,23 +71,25 @@ function setup() {
 
 
 
-
-
 function draw() {
     background(0, 128, 0);
     displayDeckCount();
-    displayTurnIndicator(); // New function to display the current turn
+    displayTurnIndicator();
     if (movingCard) {
+        // Update the card's position
         let progress = movingCard.progress;
         movingCard.card.x = lerp(movingCard.startX, movingCard.targetX, progress);
         movingCard.card.y = lerp(movingCard.startY, movingCard.targetY, progress);
 
-        // Update the progress
-        movingCard.progress += 0.05; // Adjust speed as needed
+        // Increment the progress
+        movingCard.progress += 0.05;
 
-        // Check if the animation is complete
+        // Check if the movement is complete
         if (movingCard.progress >= 1) {
-            movingCard = null;
+            // Place the card at the final position
+            movingCard.card.x = movingCard.targetX;
+            movingCard.card.y = movingCard.targetY;
+            movingCard = null; // Stop moving the card
         }
     }
     if (movingCard) {
@@ -173,7 +181,7 @@ function isPositionEmpty(position, tolerance = 10) {
 
 function calculateCenterPositions() {
     const positions = [];
-    const cardWidth = 105; // Assuming all cards have the same width
+    const cardWidth = 105;
     const startX = (width / 2) - (3 * cardWidth) + 50; // Start placing cards from the left of center
 
     for (let i = 0; i < 6; i++) {
@@ -196,10 +204,16 @@ function isInCenter(card, tolerance = 400) {
 }
 
 function displayDeckCount() {
-    let count = fullDeck.length
+    let count = fullDeck.length;
     let imgX = 10;
     let imgY = height / 2 - ImgCalodes.height / 2 + 200;
 
+    push();
+    translate(imgX + 100, imgY + 90);
+    rotate(radians(220));
+    image(trump.img, 0, 0, 80, 80);
+
+    pop();
     image(ImgCalodes, imgX, imgY, 120, 120);
     fill(255);
     noStroke();
@@ -207,6 +221,7 @@ function displayDeckCount() {
     textAlign(CENTER, CENTER);
     text(count, imgX + 60, imgY + 140);
 }
+
 
 
 function dealCards() {
@@ -237,23 +252,24 @@ function dealCards() {
 
 
 
-//bot
+//bot logic
 
 
 function botRespondToAttack(playerCard) {
-    // Try to find a card of the same suit with a higher value
-    let responseCard = botCards.find(card => card.suit === playerCard.suit && card.value > playerCard.value);
 
-    // // If no card found and player's card is not a trump, try to beat with a trump card
-    // if (!responseCard && playerCard.suit !== trumpSuit) {
-    //     responseCard = botCards.find(card => card.suit === trumpSuit);
-    // }
+    let responseCard = botCards.find(card => card.suit === playerCard.suit && card.value > playerCard.value);
+    console.log(playerCard);
+    console.log(responseCard);
+
+    // If no card found and player's card is not a trump, try to beat with a trump card
+    if (!responseCard && playerCard.suit !== trump.suit) {
+        responseCard = botCards.find(card => card.suit === trump.suit);
+    }
 
     if (responseCard) {
-        botCards = botCards.filter(card => card !== responseCard);
-        playBotCard(responseCard);
+        // Play the bot's card at the position of the player's card
+        playBotCard(responseCard, { x: playerCard.x, y: playerCard.y-40 });
     } else {
-        // Bot cannot respond, picks up the card (or any other rules specific action)
         // botPickUpCard(playerCard);
     }
 
@@ -261,23 +277,21 @@ function botRespondToAttack(playerCard) {
     turn = "player";
 }
 
-function playBotCard(card) {
-    // Set the target position for the card
-    let targetX = width / 2;
-    let targetY = height / 2;
-
+function playBotCard(card, targetPosition) {
     // Initialize movingCard with card details and target position
     movingCard = {
         card: card,
         startX: card.x,
         startY: card.y,
-        targetX: targetX,
-        targetY: targetY,
+        targetX: targetPosition.x,
+        targetY: targetPosition.y,
         progress: 0 // Progress of the animation, from 0 to 1
     };
 
     card.inPlay = true;
 
-    botCards = botCards.filter(c => c !== card);
+    // Remove the card from the bot's hand
+    // botCards = botCards.filter(c => c !== card);
 }
+
 
