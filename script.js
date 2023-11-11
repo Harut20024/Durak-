@@ -51,71 +51,64 @@ function setup() {
 
     // Access the last card to set it as the trump
     trump = fullDeck[fullDeck.length - 1];
-
-    function sortCards(a, b) {
-        // Check if either card is a trump
-        if (a.suit === trump.suit && b.suit !== trump.suit) {
-            return 1; // a is a trump, so it comes first
-        } else if (b.suit === trump.suit && a.suit !== trump.suit) {
-            return -1; // b is a trump, so it comes first
-        } else if (a.suit === b.suit) {
-            return a.value - b.value; // Same suit, sort by value
-        } else {
-            return a.suit.localeCompare(b.suit); // Different suits, sort alphabetically
-        }
-    }
-
-    // Apply the sorting
-    playerCards.sort(sortCards);
-    botCards.sort(sortCards);
     dealCards();
 }
 
 function updatePlayerCardPositions() {
-    let startX, startY;
+    let startX
+    const startY = height - 150;
+    let cardWidth = 110;
+    let endX = width - 25;
+
     if (playerCards.length <= 6) {
-        // If 6 or fewer cards, spread them out more
-        startX = (width - (playerCards.length * 110)) / 2; // Centered horizontally
-        startY = height - 150; // Positioned towards the bottom of the canvas
+        startX = (width - (playerCards.length * cardWidth)) / 2;
     } else {
-        // If more than 6 cards, position them closer together
-        let necessarySpace = (width - (6 * 110)) / 2; // Space needed for 6 cards
-        startX = necessarySpace;
-        startY = height - 150;
+        let totalWidth = playerCards.length * cardWidth;
+        if (totalWidth > endX) {
+            cardWidth = (endX - 20) / playerCards.length;
+            startX = 10;
+        } else {
+            let ness = (width - (6 * cardWidth)) / 2;
+            startX = ness;
+        }
     }
 
     for (let i = 0; i < playerCards.length; i++) {
-        if (playerCards.length <= 6) {
-            playerCards[i].x = startX + i * 110; // More space between cards
-        } else {
-            playerCards[i].x = startX + i * 50; // Less space between cards
-        }
+        playerCards[i].x = startX + i * cardWidth;
         playerCards[i].y = startY;
     }
+
+    playerCards.sort(sortCards);
 }
 
 
 function updateBotCardPositions() {
-    let startX, startY;
+    let startX
+    const startY = 100;
+    let cardWidth = 110;
+    let endX = width - 25;
+
     if (botCards.length <= 6) {
-
-        startX = (width - (botCards.length * 110)) / 2;
-        startY = 100;
-    }
-    else {
-        let ness = (width - (6 * 110)) / 2
-        startX = ness
-        startY = 100;
-
-    }
-    for (let i = 0; i < botCards.length; i++) {
-        if (botCards.length <= 6) {
-            botCards[i].x = startX + i * 110;
+        startX = (width - (botCards.length * cardWidth)) / 2;
+    } else {
+        let totalWidth = botCards.length * cardWidth;
+        if (totalWidth > endX) {
+            cardWidth = (endX - 20) / botCards.length;
+            startX = 10;
+        } else {
+            let ness = (width - (6 * cardWidth)) / 2;
+            startX = ness;
         }
-        else botCards[i].x = startX + i * 50;
+    }
+
+    for (let i = 0; i < botCards.length; i++) {
+        botCards[i].x = startX + i * cardWidth;
         botCards[i].y = startY;
     }
+    botCards.sort(sortCards);
+
 }
+
 
 
 function draw() {
@@ -313,7 +306,18 @@ function dealCards() {
 
 }
 
-
+function sortCards(a, b) {
+    // Check if either card is a trump
+    if (a.suit === trump.suit && b.suit !== trump.suit) {
+        return 1; // a is a trump, so it comes first
+    } else if (b.suit === trump.suit && a.suit !== trump.suit) {
+        return -1; // b is a trump, so it comes first
+    } else if (a.suit === b.suit) {
+        return a.value - b.value; // Same suit, sort by value
+    } else {
+        return a.suit.localeCompare(b.suit); // Different suits, sort alphabetically
+    }
+}
 
 
 //bot logic
