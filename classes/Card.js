@@ -18,7 +18,7 @@ class Card {
             this.x = mouseX - this.width / 2;
             this.y = mouseY - this.height / 2;
         }
-        if (this.y < 110) image(this.ImgBack, this.x - 24, this.y, this.width + 80, this.height + 30)
+        if (this.y < 110) image(this.ImgBack, this.x, this.y, this.width + 65 , this.height + 30)
         else image(this.img, this.x, this.y, this.width, this.height);
 
 

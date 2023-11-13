@@ -3,7 +3,8 @@ let playerCards = [];
 let botCards = []
 let fullDeck = [];
 let ImgCalodes, ImgTrump;
-let turn = "player";
+let turn;
+let attack;
 let trump;
 let table = [];
 let PlayerCardCount = 0;
@@ -13,10 +14,8 @@ let allowedCards = []
 let distribute = true;
 let distributeTrump = false;
 let turncount = 0;
+let initialTurnSet = false;
 
-function switchTurn() {
-    turn = (turn === "player") ? "bot" : "player";
-}
 
 function preload() {
     ImgCalodes = loadImage(`Images/caloda.png`);
@@ -41,49 +40,6 @@ function preload() {
         fullDeck.push(...deck.cards);
     }
 }
-function distributecards() {
-    if (distribute) {
-        if (playerCards.length < 6) {
-            let count = 6 - playerCards.length
-            for (let i = 0; i < count; i++) {
-                playerCards.push(fullDeck.shift());
-                if (fullDeck.length <= 0) {
-                    distribute = false
-                    break
-                }
-            }
-        }
-        if (botCards.length < 6) {
-            let count = 6 - botCards.length
-            for (let i = 0; i < count; i++) {
-                botCards.push(fullDeck.shift());
-                if (fullDeck.length <= 0) {
-                    distribute = false
-                    break
-                }
-            }
-        }
-
-    }
-}
-
-function discardCards() {
-    console.log("Discarding cards");
-
-    table = [];
-    allowedCards = []; // Reset allowed cards
-    cardIndex = 0; // Reset card index
-    distributeTrump = true
-    distributecards()
-    updatePlayerCardPositions();
-    updateBotCardPositions();
-
-    // switchTurn(); // Switch turns if needed
-    button.hide(); // Hide the button after discarding
-
-    redraw();
-}
-
 
 
 function setup() {
@@ -91,11 +47,7 @@ function setup() {
     shuffleArray(fullDeck);
     playerCards = [];
     botCards = [];
-
-
     buttoncreate()
-
-
     for (let i = 0; i < 6; i++) {
         playerCards.push(fullDeck.shift());
         botCards.push(fullDeck.shift());
@@ -104,69 +56,18 @@ function setup() {
     // Access the last card to set it as the trump
     trump = fullDeck[fullDeck.length - 1];
     dealCards();
-}
+    turn = findSmallestTrumpCard();
+    attack = turn
 
-function updatePlayerCardPositions() {
-    let startX
-    const startY = height - 150;
-    let cardWidth = 110;
-    let endX = width - 25;
-
-    if (playerCards.length <= 6) {
-        startX = (width - (playerCards.length * cardWidth)) / 2;
-    } else {
-        let totalWidth = playerCards.length * cardWidth;
-        if (totalWidth > endX) {
-            cardWidth = (endX - 20) / playerCards.length;
-            startX = 10;
-        } else {
-            let ness = (width - (6 * cardWidth)) / 2;
-            startX = ness;
-        }
-    }
-
-    for (let i = 0; i < playerCards.length; i++) {
-        playerCards[i].x = startX + i * cardWidth;
-        playerCards[i].y = startY;
-    }
-
-    playerCards.sort(sortCards);
-}
-
-
-function updateBotCardPositions() {
-    let startX
-    const startY = 100;
-    let cardWidth = 110;
-    let endX = width - 25;
-
-    if (botCards.length <= 6) {
-        startX = (width - (botCards.length * cardWidth)) / 2;
-    } else {
-        let totalWidth = botCards.length * cardWidth;
-        if (totalWidth > endX) {
-            cardWidth = (endX - 20) / botCards.length;
-            startX = 10;
-        } else {
-            let ness = (width - (6 * cardWidth)) / 2;
-            startX = ness;
-        }
-    }
-
-    for (let i = 0; i < botCards.length; i++) {
-        botCards[i].x = startX + i * cardWidth;
-        botCards[i].y = startY;
-    }
-    botCards.sort(sortCards);
 
 }
-
-
 
 function draw() {
+
     background(0, 128, 0);
     displayDeckCount();
     displayTurnIndicator();
+    updatePlayerCardPositions()
     if (movingCard) {
         let progress = movingCard.progress;
         movingCard.card.x = lerp(movingCard.startX, movingCard.targetX, progress);
@@ -188,8 +89,10 @@ function draw() {
     } else {
         button.hide();
     }
-
-    updatePlayerCardPositions()
+    if (turncount === 6) {
+        discardCards()
+        turncount = 0
+    }
     for (let card of playerCards) {
         card.display();
     }
@@ -204,14 +107,11 @@ function draw() {
     }
 }
 
-function displayTurnIndicator() {
-    fill(255);
-    textSize(24);
-    text(`Current Turn: ${turn}`, width / 2, 30);
-}
 
 
 function mousePressed() {
+    console.log(attack);
+    console.log(turncount);
     if (turn !== "player") return;
 
     for (let card of playerCards) {
@@ -240,6 +140,7 @@ function mouseReleased() {
                             cardIs: card
                         })
                         PlayerCardCount++
+                        turncount++
                         playerCardToBot = card;
                         playerCards = playerCards.filter(c => c !== card);
                         switchTurn();
@@ -253,6 +154,7 @@ function mouseReleased() {
                                 turnCount: PlayerCardCount,
                                 cardIs: card
                             })
+                            turncount++
                             PlayerCardCount++
                             playerCardToBot = card;
                             playerCards = playerCards.filter(c => c !== card);
@@ -338,14 +240,14 @@ function displayDeckCount() {
     let imgX = 10;
     let imgY = height / 2 - ImgCalodes.height / 2 + 200;
 
-    push();
-    translate(imgX + 100, imgY + 90);
-    rotate(radians(230));
     if (fullDeck.length > 1) {
+        push();
+        translate(imgX + 100, imgY + 90);
+        rotate(radians(230));
         image(trump.img, -20, 0, 90, 90);
         pop();
     } else if (fullDeck.length === 1) {
-        pop()
+
         image(trump.img, imgX + 20, imgY - 20, 80, 110);
     }
 
@@ -406,7 +308,7 @@ function sortCards(a, b) {
 
 function buttoncreate() {
     button = createButton("Discard");
-    button.position(width/1.12, height / 1.4);
+    button.position(width / 1.12, height / 1.4);
     button.mousePressed(() => {
         if (table.length !== 0) discardCards()
     });
@@ -417,6 +319,145 @@ function buttoncreate() {
     button.style('border-radius', '10px');
     button.hide();
 }
+
+
+function switchTurn() {
+    turn = (turn === "player") ? "bot" : "player";
+}
+
+function findSmallestTrumpCard() {
+    let trumpCardsBot = botCards.filter(card => card.suit === trump.suit);
+    let trumpCardsPlayer = playerCards.filter(card => card.suit === trump.suit);
+
+    // If one player has no trump cards, the other player starts
+    if (trumpCardsBot.length === 0 && trumpCardsPlayer.length > 0) {
+        return "player";
+    } else if (trumpCardsPlayer.length === 0 && trumpCardsBot.length > 0) {
+        return "bot";
+    }
+
+    // If both players have trump cards, find the smallest one
+    let smallestTrumpCardBot = trumpCardsBot.reduce((smallest, current) => {
+        return (smallest.value < current.value) ? smallest : current;
+    }, { value: Infinity });
+
+    let smallestTrumpCardPlayer = trumpCardsPlayer.reduce((smallest, current) => {
+        return (smallest.value < current.value) ? smallest : current;
+    }, { value: Infinity });
+
+    // Compare the smallest trump cards of both players
+    if (smallestTrumpCardBot.value > smallestTrumpCardPlayer.value) {
+        return "bot";
+    } else {
+        return "player";
+    }
+}
+
+function distributecards() {
+    if (distribute) {
+        if (playerCards.length < 6) {
+            let count = 6 - playerCards.length
+            for (let i = 0; i < count; i++) {
+                playerCards.push(fullDeck.shift());
+                if (fullDeck.length <= 0) {
+                    distribute = false
+                    break
+                }
+            }
+        }
+        if (botCards.length < 6) {
+            let count = 6 - botCards.length
+            for (let i = 0; i < count; i++) {
+                botCards.push(fullDeck.shift());
+                if (fullDeck.length <= 0) {
+                    distribute = false
+                    break
+                }
+            }
+        }
+    }
+}
+
+function discardCards() {
+
+    table = [];
+    allowedCards = [];
+    cardIndex = 0;
+    turncount = 0;
+    distributeTrump = true
+    distributecards()
+    updatePlayerCardPositions();
+    updateBotCardPositions();
+
+    // switchTurn(); // Switch turns if needed
+    attack = "bot"
+    button.hide();
+    redraw();
+}
+
+function updatePlayerCardPositions() {
+    let startX
+    const startY = height - 150;
+    let cardWidth = 110;
+    let endX = width - 25;
+
+    if (playerCards.length <= 6) {
+        startX = (width - (playerCards.length * cardWidth)) / 2;
+    } else {
+        let totalWidth = playerCards.length * cardWidth;
+        if (totalWidth > endX) {
+            cardWidth = (endX - 20) / playerCards.length;
+            startX = 10;
+        } else {
+            let ness = (width - (6 * cardWidth)) / 2;
+            startX = ness;
+        }
+    }
+
+    for (let i = 0; i < playerCards.length; i++) {
+        playerCards[i].x = startX + i * cardWidth;
+        playerCards[i].y = startY;
+    }
+
+    playerCards.sort(sortCards);
+}
+
+function updateBotCardPositions() {
+    let startX
+    const startY = 100;
+    let cardWidth = 110;
+    let endX = width - 25;
+
+    if (botCards.length <= 6) {
+        startX = (width - (botCards.length * cardWidth)) / 2;
+    } else {
+        let totalWidth = botCards.length * cardWidth;
+        if (totalWidth > endX) {
+            cardWidth = (endX - 20) / botCards.length;
+            startX = 10;
+        } else {
+            let ness = (width - (6 * cardWidth)) / 2;
+            startX = ness;
+        }
+    }
+
+    for (let i = 0; i < botCards.length; i++) {
+        botCards[i].x = startX + i * cardWidth;
+        botCards[i].y = startY;
+    }
+    botCards.sort(sortCards);
+
+}
+
+function displayTurnIndicator() {
+    fill(255);
+    textSize(24);
+    text(`Current Turn: ${turn}`, width / 2, 30);
+}
+
+
+
+
 //bot logic
 
 
