@@ -10,6 +10,7 @@ class Card {
         this.dragging = false;
         this.width = 100;
         this.height = 130;
+        this.ImgBack = loadImage(`Images/back.png`);
     }
 
     display() {
@@ -17,7 +18,10 @@ class Card {
             this.x = mouseX - this.width / 2;
             this.y = mouseY - this.height / 2;
         }
-        image(this.img, this.x, this.y, this.width, this.height);
+        if (this.y < 110) image(this.ImgBack, this.x - 24, this.y, this.width + 80, this.height + 30)
+        else image(this.img, this.x, this.y, this.width, this.height);
+
+
     }
 
     isMouseOver() {

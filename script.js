@@ -1,15 +1,18 @@
-let movingCard = null; // Global variable to track the moving card
+let movingCard = null;
 let playerCards = [];
 let botCards = []
 let fullDeck = [];
-let ImgCalodes;
+let ImgCalodes, ImgTrump;
 let turn = "player";
 let trump;
 let table = [];
 let PlayerCardCount = 0;
 let BotCardCount = 0;
 let cardIndex = 0
-
+let allowedCards = []
+let distribute = true;
+let distributeTrump = false;
+let turncount = 0;
 
 function switchTurn() {
     turn = (turn === "player") ? "bot" : "player";
@@ -17,6 +20,8 @@ function switchTurn() {
 
 function preload() {
     ImgCalodes = loadImage(`Images/caloda.png`);
+    ImgTrump = loadImage(`Images/trump.png`);
+
     const suitsImages = {
         'Clubs': [],
         'Diamonds': [],
@@ -36,13 +41,60 @@ function preload() {
         fullDeck.push(...deck.cards);
     }
 }
+function distributecards() {
+    if (distribute) {
+        if (playerCards.length < 6) {
+            let count = 6 - playerCards.length
+            for (let i = 0; i < count; i++) {
+                playerCards.push(fullDeck.shift());
+                if (fullDeck.length <= 0) {
+                    distribute = false
+                    break
+                }
+            }
+        }
+        if (botCards.length < 6) {
+            let count = 6 - botCards.length
+            for (let i = 0; i < count; i++) {
+                botCards.push(fullDeck.shift());
+                if (fullDeck.length <= 0) {
+                    distribute = false
+                    break
+                }
+            }
+        }
+
+    }
+}
+
+function discardCards() {
+    console.log("Discarding cards");
+
+    table = [];
+    allowedCards = []; // Reset allowed cards
+    cardIndex = 0; // Reset card index
+    distributeTrump = true
+    distributecards()
+    updatePlayerCardPositions();
+    updateBotCardPositions();
+
+    // switchTurn(); // Switch turns if needed
+    button.hide(); // Hide the button after discarding
+
+    redraw();
+}
+
+
 
 function setup() {
-    createCanvas(900, 800);
+    createCanvas(1000, 800);
     shuffleArray(fullDeck);
-
     playerCards = [];
     botCards = [];
+
+
+    buttoncreate()
+
 
     for (let i = 0; i < 6; i++) {
         playerCards.push(fullDeck.shift());
@@ -116,17 +168,12 @@ function draw() {
     displayDeckCount();
     displayTurnIndicator();
     if (movingCard) {
-        // Update the card's position
         let progress = movingCard.progress;
         movingCard.card.x = lerp(movingCard.startX, movingCard.targetX, progress);
         movingCard.card.y = lerp(movingCard.startY, movingCard.targetY, progress);
-
-        // Increment the progress
         movingCard.progress += 0.05;
 
-        // Check if the movement is complete
         if (movingCard.progress >= 1) {
-            // Place the card at the final position
             movingCard.card.x = movingCard.targetX;
             movingCard.card.y = movingCard.targetY;
             movingCard = null; // Stop moving the card
@@ -135,6 +182,13 @@ function draw() {
     if (movingCard) {
         movingCard.card.display();
     }
+
+    if (turn === "player") {
+        button.show();
+    } else {
+        button.hide();
+    }
+
     updatePlayerCardPositions()
     for (let card of playerCards) {
         card.display();
@@ -178,16 +232,35 @@ function mouseReleased() {
 
             if (isInCenter(card)) {
                 if (placeCardInCenter(card)) {
-                    table.push({
-                        turnOf: "Player",
-                        turnCount: PlayerCardCount,
-                        cardIs: card
-                    })
-                    PlayerCardCount++
-                    playerCardToBot = card;
-                    playerCards = playerCards.filter(c => c !== card);
-                    switchTurn();
-                    break;
+                    if (allowedCards.length === 0) {
+
+                        table.push({
+                            turnOf: "Player",
+                            turnCount: PlayerCardCount,
+                            cardIs: card
+                        })
+                        PlayerCardCount++
+                        playerCardToBot = card;
+                        playerCards = playerCards.filter(c => c !== card);
+                        switchTurn();
+                        allowedCards.push(card.value)
+                        break;
+                    }
+                    else {
+                        if (allowedCards.includes(card.value)) {
+                            table.push({
+                                turnOf: "Player",
+                                turnCount: PlayerCardCount,
+                                cardIs: card
+                            })
+                            PlayerCardCount++
+                            playerCardToBot = card;
+                            playerCards = playerCards.filter(c => c !== card);
+                            switchTurn();
+                            allowedCards.push(card.value)
+                            break;
+                        }
+                    }
                 }
             } else {
                 card.resetPosition();
@@ -195,11 +268,11 @@ function mouseReleased() {
         }
     }
 
+
     // Call botRespondToAttack only if a card was placed in the center
     if (playerCardToBot) {
         botRespondToAttack(playerCardToBot);
     }
-    console.log(table);
 
 }
 
@@ -267,11 +340,24 @@ function displayDeckCount() {
 
     push();
     translate(imgX + 100, imgY + 90);
-    rotate(radians(220));
-    image(trump.img, 0, 0, 80, 80);
+    rotate(radians(230));
+    if (fullDeck.length > 1) {
+        image(trump.img, -20, 0, 90, 90);
+        pop();
+    } else if (fullDeck.length === 1) {
+        pop()
+        image(trump.img, imgX + 20, imgY - 20, 80, 110);
+    }
 
-    pop();
-    image(ImgCalodes, imgX, imgY, 120, 120);
+    if (distributeTrump) {
+        image(ImgTrump, width / 1.15, height / 2, 150, 180)
+        image(ImgTrump, width / 1.15, height / 2.2, 150, 180)
+        image(ImgTrump, width / 1.2, height / 2.2, 150, 180)
+        image(ImgTrump, width / 1.15, height / 2.5, 150, 180)
+
+    }
+    if (fullDeck.length > 1) image(ImgCalodes, imgX, imgY, 140, 140);
+
     fill(255);
     noStroke();
     textSize(24);
@@ -307,7 +393,6 @@ function dealCards() {
 }
 
 function sortCards(a, b) {
-    // Check if either card is a trump
     if (a.suit === trump.suit && b.suit !== trump.suit) {
         return 1; // a is a trump, so it comes first
     } else if (b.suit === trump.suit && a.suit !== trump.suit) {
@@ -319,7 +404,19 @@ function sortCards(a, b) {
     }
 }
 
-
+function buttoncreate() {
+    button = createButton("Discard");
+    button.position(width/1.12, height / 1.4);
+    button.mousePressed(() => {
+        if (table.length !== 0) discardCards()
+    });
+    button.style("font-family", "Bodoni");
+    button.size(140, 70);
+    button.style('background-color', '#4CAF50');
+    button.style('text-decoration', 'none');
+    button.style('border-radius', '10px');
+    button.hide();
+}
 //bot logic
 
 
@@ -337,10 +434,12 @@ function botRespondToAttack(playerCard) {
         // Play the bot's card at the position of the player's card
         playBotCard(responseCard, { x: playerCard.x, y: playerCard.y - 40 });
     } else {
-        // Collect all cards from the table if there is no response
         let collectedCards = table.map(item => item.cardIs);
         botCards.push(...collectedCards);
         table = [];
+        allowedCards = []
+        cardIndex = 0
+        distributecards()
     }
 
     // Switch turn back to the player
@@ -365,9 +464,7 @@ function playBotCard(card, targetPosition) {
         turnCount: BotCardCount,
         cardIs: card
     })
+    allowedCards.push(card.value)
     BotCardCount++
     botCards = botCards.filter(c => c !== card);
 }
-
-
-
