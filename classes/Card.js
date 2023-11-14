@@ -25,7 +25,7 @@ class Card {
         }
 
         if (this.y < 110) {
-            image(this.ImgBack, this.x, this.y, this.width + 65 , this.height + 30);
+            image(this.ImgBack, this.x, this.y, this.width + 60, this.height + 30);
         } else {
             image(this.img, this.x, this.y, this.width, this.height);
         }
