@@ -7,15 +7,16 @@ let turn;
 let attack;
 let trump;
 let table = [];
+let button, button1
 let PlayerCardCount = 0;
 let BotCardCount = 0;
 let cardIndex = 0
 let allowedCards = []
 let distribute = true;
 let distributeTrump = false;
-let turncount = 0;
+let tableCardsCount = 0;
 let initialTurnSet = false;
-
+let botAttackCout = 0
 
 function preload() {
     ImgCalodes = loadImage(`Images/caloda.png`);
@@ -48,12 +49,12 @@ function setup() {
     playerCards = [];
     botCards = [];
     buttoncreate()
+    buttoncreateforCollect()
     for (let i = 0; i < 6; i++) {
         playerCards.push(fullDeck.shift());
         botCards.push(fullDeck.shift());
     }
 
-    // Access the last card to set it as the trump
     trump = fullDeck[fullDeck.length - 1];
     dealCards();
     turn = findSmallestTrumpCard();
@@ -63,7 +64,6 @@ function setup() {
 }
 
 function draw() {
-
     background(0, 128, 0);
     displayDeckCount();
     displayTurnIndicator();
@@ -84,34 +84,60 @@ function draw() {
         movingCard.card.display();
     }
 
-    if (turn === "player") {
+    if (attack === "bot") {
+        botRespondToAttack()
+    }
+    if (turn === "player" && attack === "player") {
         button.show();
     } else {
         button.hide();
     }
-    if (turncount === 6) {
+    if (turn === "player" && attack === "bot") {
+        button1.show();
+    } else {
+        button1.hide();
+    }
+    if (tableCardsCount === 6) {
         discardCards()
-        turncount = 0
+        tableCardsCount = 0
     }
-    for (let card of playerCards) {
-        card.display();
-    }
+
     updateBotCardPositions()
     for (let card of botCards) {
         card.display();
     }
     for (let item of table) {
-        if (item.cardIs && item.cardIs.display) {
+        if (item.cardIs && typeof item.cardIs.display === 'function') {
             item.cardIs.display();
         }
     }
+
+    for (let card of playerCards) {
+        card.display();
+        if (card.y < 110) {
+            fill(255);
+            textSize(32);
+            drawTextWithBackground("Don't show your cards to the Bot", width / 2, height / 2, 'rgba(255, 255, 255, 0.8)', 'black', 5);
+        }
+
+    }
+    if (fullDeck.length === 0) {
+        if (playerCards.length === 0) {
+            drawTextWithBackground('Player Win!!!', width / 2, height / 2, 'rgba(144, 238, 144, 0.8)', 'white', 5);
+            setTimeout(() => window.location.reload(), 2000);
+        }
+        else if (botCards.length === 0) {
+            drawTextWithBackground('Bot Win!!!', width / 2, height / 2, 'rgba(144, 238, 144, 0.8)', 'white', 5);
+            setTimeout(() => window.location.reload(), 2000);
+        }
+    }
+
+
 }
 
 
 
 function mousePressed() {
-    console.log(attack);
-    console.log(turncount);
     if (turn !== "player") return;
 
     for (let card of playerCards) {
@@ -126,21 +152,45 @@ function mouseReleased() {
     if (turn !== "player") return;
     let playerCardToBot;
 
+
     for (let card of playerCards) {
+
         if (card.dragging) {
             card.stopDragging();
 
             if (isInCenter(card)) {
                 if (placeCardInCenter(card)) {
-                    if (allowedCards.length === 0) {
+
+                    if (attack === "bot") {
+                        let botCard = table[table.length - 1].cardIs;
+
+                        if ((card.suit === botCard.suit && card.value > botCard.value) || card.suit === trump.suit) {
+                            if (botCard.suit === trump.suit && card.value < botCard.value) break
+                            else {
+                                table.push({
+                                    turnOf: "Player",
+                                    tableCardsCount: PlayerCardCount,
+                                    cardIs: card
+                                });
+                                tableCardsCount++;
+                                PlayerCardCount++;
+                                playerCardToBot = card;
+                                playerCards = playerCards.filter(c => c !== card);
+                                switchTurn();
+                                allowedCards.push(card.value);
+                                break;
+                            }
+                        }
+                    }
+                    else if (allowedCards.length === 0 && attack === "player") {
 
                         table.push({
                             turnOf: "Player",
-                            turnCount: PlayerCardCount,
+                            tableCardsCount: PlayerCardCount,
                             cardIs: card
                         })
                         PlayerCardCount++
-                        turncount++
+                        tableCardsCount++
                         playerCardToBot = card;
                         playerCards = playerCards.filter(c => c !== card);
                         switchTurn();
@@ -151,10 +201,10 @@ function mouseReleased() {
                         if (allowedCards.includes(card.value)) {
                             table.push({
                                 turnOf: "Player",
-                                turnCount: PlayerCardCount,
+                                tableCardsCount: PlayerCardCount,
                                 cardIs: card
                             })
-                            turncount++
+                            tableCardsCount++
                             PlayerCardCount++
                             playerCardToBot = card;
                             playerCards = playerCards.filter(c => c !== card);
@@ -168,14 +218,35 @@ function mouseReleased() {
                 card.resetPosition();
             }
         }
+
+
+
     }
 
-
-    // Call botRespondToAttack only if a card was placed in the center
-    if (playerCardToBot) {
-        botRespondToAttack(playerCardToBot);
+    if (playerCardToBot && attack === "player") {
+        botRespondToDeffend(playerCardToBot);
     }
 
+}
+
+function drawTextWithBackground(txt, x, y, backgroundColor, borderColor, borderThickness) {
+    textSize(32); // Set text size
+    let txtWidth = textWidth(txt); // Corrected variable name
+    let textHeight = textSize() + 50;
+    let padding = 10;
+
+    // Draw the background rectangle
+    fill(backgroundColor); // Set background color
+    stroke(borderColor); // Set border color
+    strokeWeight(borderThickness); // Set border thickness
+    rectMode(CENTER);
+    rect(x, y, txtWidth + padding * 2, textHeight + padding, 10);
+
+    // Draw the text
+    fill(0); // Set text color (black)
+    noStroke(); // No border for the text
+    textAlign(CENTER, CENTER);
+    text(txt, x, y);
 }
 
 
@@ -319,7 +390,28 @@ function buttoncreate() {
     button.style('border-radius', '10px');
     button.hide();
 }
-
+function buttoncreateforCollect() {
+    button1 = createButton("Collect");
+    button1.position(width / 1.12, height / 1.4);
+    button1.mousePressed(() => {
+        if (table.length !== 0) {
+            let collectedCards = table.map(item => item.cardIs);
+            playerCards.push(...collectedCards);
+            table = [];
+            allowedCards = []
+            cardIndex = 0
+            distributecards()
+            turn = "bot"
+            botAttackCout = 0
+        }
+    });
+    button1.style("font-family", "Bodoni");
+    button1.size(140, 70);
+    button1.style('background-color', '#4CAF50');
+    button1.style('text-decoration', 'none');
+    button1.style('border-radius', '10px');
+    button1.hide();
+}
 
 function switchTurn() {
     turn = (turn === "player") ? "bot" : "player";
@@ -329,7 +421,6 @@ function findSmallestTrumpCard() {
     let trumpCardsBot = botCards.filter(card => card.suit === trump.suit);
     let trumpCardsPlayer = playerCards.filter(card => card.suit === trump.suit);
 
-    // If one player has no trump cards, the other player starts
     if (trumpCardsBot.length === 0 && trumpCardsPlayer.length > 0) {
         return "player";
     } else if (trumpCardsPlayer.length === 0 && trumpCardsBot.length > 0) {
@@ -347,9 +438,9 @@ function findSmallestTrumpCard() {
 
     // Compare the smallest trump cards of both players
     if (smallestTrumpCardBot.value > smallestTrumpCardPlayer.value) {
-        return "bot";
-    } else {
         return "player";
+    } else {
+        return "bot";
     }
 }
 
@@ -383,39 +474,30 @@ function discardCards() {
     table = [];
     allowedCards = [];
     cardIndex = 0;
-    turncount = 0;
+    tableCardsCount = 0;
+    botAttackCout = 0;
     distributeTrump = true
     distributecards()
     updatePlayerCardPositions();
     updateBotCardPositions();
 
-    // switchTurn(); // Switch turns if needed
+    switchTurn();
     attack = "bot"
-    button.hide();
     redraw();
 }
 
 function updatePlayerCardPositions() {
-    let startX
     const startY = height - 150;
     let cardWidth = 110;
-    let endX = width - 25;
+    let cardSpacing = 5; // Spacing between cards
+    let maxCardWidth = (width - cardSpacing * (playerCards.length - 1)) / playerCards.length - 10;
+    cardWidth = Math.min(cardWidth, maxCardWidth);
 
-    if (playerCards.length <= 6) {
-        startX = (width - (playerCards.length * cardWidth)) / 2;
-    } else {
-        let totalWidth = playerCards.length * cardWidth;
-        if (totalWidth > endX) {
-            cardWidth = (endX - 20) / playerCards.length;
-            startX = 10;
-        } else {
-            let ness = (width - (6 * cardWidth)) / 2;
-            startX = ness;
-        }
-    }
+    let totalWidth = playerCards.length * cardWidth + cardSpacing * (playerCards.length - 1);
+    let startX = (width - totalWidth) / 2;
 
     for (let i = 0; i < playerCards.length; i++) {
-        playerCards[i].x = startX + i * cardWidth;
+        playerCards[i].x = startX + i * (cardWidth + cardSpacing);
         playerCards[i].y = startY;
     }
 
@@ -423,7 +505,7 @@ function updatePlayerCardPositions() {
 }
 
 function updateBotCardPositions() {
-    let startX
+    let startX;
     const startY = 100;
     let cardWidth = 110;
     let endX = width - 25;
@@ -442,12 +524,14 @@ function updateBotCardPositions() {
     }
 
     for (let i = 0; i < botCards.length; i++) {
-        botCards[i].x = startX + i * cardWidth;
-        botCards[i].y = startY;
+        if (botCards[i]) { // Check if the card is not undefined
+            botCards[i].x = startX + i * cardWidth;
+            botCards[i].y = startY;
+        }
     }
     botCards.sort(sortCards);
-
 }
+
 
 function displayTurnIndicator() {
     fill(255);
@@ -461,7 +545,77 @@ function displayTurnIndicator() {
 //bot logic
 
 
-function botRespondToAttack(playerCard) {
+
+function botRespondToAttack() {
+    if (turn !== "bot") return; // Ensure it's the bot's turn to attack
+
+    let cardToPlay;
+
+    // On the first turn of the round, the bot can play any card
+    if (table.length === 0) {
+        cardToPlay = selectAnyCard(botCards);
+    } else {
+        // Otherwise, play a card that matches the suits on the table or is in the allowed cards
+        let suitsOnTable = table.map(item => item.cardIs.suit);
+        cardToPlay = selectCardToMatch(botCards, suitsOnTable);
+    }
+    if (cardToPlay) {
+        // Play the selected card
+        const centerPosition = calculateCenterPositions()[botAttackCout];
+        botAttackCout++;
+        playBotCard(cardToPlay, { x: centerPosition.x, y: centerPosition.y - 40 });
+
+        switchTurn(); // Switch turn back to the player
+    }
+    else {
+        discardCards()
+        attack = "player"
+    }
+}
+
+function selectAnyCard(cards) {
+    return cards.length > 0 ? cards[0] : null;
+}
+
+function selectCardToMatch(cards, suitsToMatch) {
+    // Filter cards to find those that match the suits on the table or are in the allowed cards
+    let matchingCards = cards.filter(card => allowedCards.includes(card.value));
+
+    // If no matching cards, the bot cannot play a card
+    if (matchingCards.length === 0) {
+        return null;
+    }
+
+    // Select a card with the lowest value from the matching cards
+    return selectLowestValueCard(matchingCards);
+}
+
+
+function selectLowestValueCard(cards) {
+    // If there are no cards, return null
+    if (!cards.length) {
+        return null;
+    }
+
+    // Start with the first card as the lowest
+    let lowestCard = cards[0];
+
+    // Go through the rest of the cards to find the lowest value card
+    for (let i = 1; i < cards.length; i++) {
+        if (cards[i].value < lowestCard.value) {
+            lowestCard = cards[i];
+        }
+    }
+
+    // Return the card with the lowest value
+    return lowestCard;
+}
+
+
+
+
+
+function botRespondToDeffend(playerCard) {
     let responseCard = botCards.find(card => card.suit === playerCard.suit && card.value > playerCard.value);
 
     // If no card found and player's card is not a trump, try to beat with a trump card
@@ -502,7 +656,7 @@ function playBotCard(card, targetPosition) {
     card.inPlay = true;
     table.push({
         turnOf: "Bot",
-        turnCount: BotCardCount,
+        tableCardsCount: BotCardCount,
         cardIs: card
     })
     allowedCards.push(card.value)
