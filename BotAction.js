@@ -29,12 +29,13 @@ function botRespondToAttack() {
 }
 
 function selectAnyCard(cards) {
-    // Filter out trump cards
-    let nonTrumpCards = cards.filter(card => card.suit !== trump.suit);
+    if (!cards) return null; // Check if cards array is undefined or empty
 
-    // Return the card with the smallest value
-    return nonTrumpCards.length > 0 ? selectLowestValueCard(nonTrumpCards) : null;
+    let nonTrumpCards = cards.filter(card => card && card.suit !== trump.suit);
+    return selectLowestValueCard(nonTrumpCards);
 }
+
+
 
 
 function selectCardToMatch(cards, suitsToMatch) {
@@ -76,8 +77,9 @@ function selectLowestValueCard(cards) {
 
 
 function botRespondToDeffend(playerCard) {
-    let responseCard = botCards.find(card => card.suit === playerCard.suit && card.value > playerCard.value);
+    if (!playerCard) return; // Ensure playerCard is not undefined
 
+    let responseCard = botCards.find(card => card && card.suit === playerCard.suit && card.value > playerCard.value);
     // If no card found and player's card is not a trump, try to beat with a trump card
     if (!responseCard && playerCard.suit === trump.suit) {
         responseCard = botCards.find(card => card.suit === trump.suit && card.value > playerCard.value);
@@ -103,15 +105,16 @@ function botRespondToDeffend(playerCard) {
 
 
 function playBotCard(card, targetPosition) {
-    // Initialize movingCard with card details and target position
     movingCard = {
         card: card,
-        startX: card.x,
-        startY: card.y,
-        targetX: targetPosition.x,
-        targetY: targetPosition.y,
-        progress: 0 // Progress of the animation, from 0 to 1
+        startX: card.x || 0, // Use 0 as default if undefined
+        startY: card.y || 0, // Use 0 as default if undefined
+        targetX: targetPosition.x || 0, // Use 0 as default if undefined
+        targetY: targetPosition.y || 0, // Use 0 as default if undefined
+        progress: 0
     };
+
+
 
     card.inPlay = true;
     table.push({

@@ -2,7 +2,7 @@ let movingCard = null;
 let playerCards = [];
 let botCards = []
 let fullDeck = [];
-let ImgCalodes, ImgTrump;
+let ImgCalodes, ImgTrump, clubsImg, diamondsImg, heartImg, spadesImg, resentImg, bgImage;
 let turn;
 let attack;
 let trump;
@@ -17,10 +17,17 @@ let distributeTrump = false;
 let tableCardsCount = 0;
 let initialTurnSet = false;
 let botAttackCout = 0
+let showResentImg = false;
 
 function preload() {
     ImgCalodes = loadImage(`Images/caloda.png`);
     ImgTrump = loadImage(`Images/trump.png`);
+    clubsImg = loadImage(`Images/icons/clubs.png`)
+    diamondsImg = loadImage(`Images/icons/diamond.png`)
+    heartImg = loadImage(`Images/icons/heart.png`)
+    spadesImg = loadImage(`Images/icons/spades.png`)
+    resentImg = loadImage(`Images/resend.png`)
+    bgImage = loadImage('Images/table.jpg');
 
     const suitsImages = {
         'Clubs': [],
@@ -64,10 +71,12 @@ function setup() {
 }
 
 function draw() {
-    background(0, 128, 0);
+    image(bgImage, 0, 0, width, height);
     displayDeckCount();
     displayTurnIndicator();
     updatePlayerCardPositions()
+    // showResend()
+
     if (movingCard) {
         let progress = movingCard.progress;
         movingCard.card.x = lerp(movingCard.startX, movingCard.targetX, progress);
@@ -104,13 +113,16 @@ function draw() {
 
     updateBotCardPositions()
     for (let card of botCards) {
-        card.display();
+        if (card) card.display();
     }
     for (let item of table) {
         if (item.cardIs && typeof item.cardIs.display === 'function') {
             item.cardIs.display();
+        } else {
+            console.error("Invalid item in table:", item); // Debugging line
         }
     }
+
 
     for (let card of playerCards) {
         card.display();
@@ -131,6 +143,7 @@ function draw() {
             setTimeout(() => window.location.reload(), 2000);
         }
     }
+    resend()
 
 
 }
@@ -160,9 +173,37 @@ function mouseReleased() {
 
             if (isInCenter(card)) {
                 if (placeCardInCenter(card)) {
+                    let botCard = null;
+                    if (table.length > 0) {
+                        botCard = table[table.length - 1].cardIs;
+                    }
+                    // Check if the card values are the same, but suits are different
+                    //     if (attack === "bot" && botCard && card.value === botCard.value && card.suit !== trump.suit) {
+                    //        // Add both the player's and bot's card to the table
+                    //        table.push({
+                    //         turnOf: "Player",
+                    //         tableCardsCount: PlayerCardCount,
+                    //         cardIs: card
+                    //     });
+                    //     table.push({
+                    //         turnOf: "Bot",
+                    //         tableCardsCount: BotCardCount,
+                    //         cardIs: botCard
+                    //     });
 
+                    //     // Adjust card counts and remove cards from player's hand
+                    //     PlayerCardCount++;
+                    //     BotCardCount++;
+                    //     playerCards = playerCards.filter(c => c !== card);
+                    //     botCards = botCards.filter(c => c !== botCard);
+
+                    //     // Force bot to respond again
+                    //     botAttackCout = 0;
+                    //     attack = "player";
+                    //     switchTurn()
+                    //     break;
+                    // }
                     if (attack === "bot") {
-                        let botCard = table[table.length - 1].cardIs;
 
                         if ((card.suit === botCard.suit && card.value > botCard.value) || card.suit === trump.suit) {
                             if (botCard.suit === trump.suit && card.value < botCard.value) break
@@ -199,7 +240,7 @@ function mouseReleased() {
                         break;
                     }
                     else {
-                        if(allowedCards.includes(card.value)) {
+                        if (allowedCards.includes(card.value)) {
                             table.push({
                                 turnOf: "Player",
                                 tableCardsCount: PlayerCardCount,
@@ -268,13 +309,14 @@ function placeCardInCenter(droppedCard) {
     let pos = centerPositions[cardIndex];
 
     if (pos) {
-        // Position the dropped card in the center
         droppedCard.x = pos.x;
         droppedCard.y = pos.y;
         return true;
     }
     return false;
 }
+
+
 
 
 function isPositionEmpty(position, tolerance = 10) {
@@ -319,12 +361,17 @@ function displayDeckCount() {
         image(trump.img, -20, 0, 90, 90);
         pop();
     } else if (fullDeck.length === 1) {
-
         image(trump.img, imgX + 20, imgY - 20, 80, 110);
     }
-
+    else {
+        trump.suit === 'Spades' ? image(spadesImg, imgX + 20, imgY - 20, 80, 80) :
+            trump.suit === 'Clubs' ? image(clubsImg, imgX + 20, imgY - 20, 80, 80) :
+                trump.suit === 'Diamonds' ? image(diamondsImg, imgX + 20, imgY - 20, 80, 80) :
+                    image(heartImg, imgX + 20, imgY - 20, 80, 80)
+        60
+    }
     if (distributeTrump) {
-        image(ImgTrump, width / 1.15, height / 2, 150, 180)
+        image(ImgTrump, width / 1.15, height / 2, 150, 180);
         image(ImgTrump, width / 1.15, height / 2.2, 150, 180)
         image(ImgTrump, width / 1.2, height / 2.2, 150, 180)
         image(ImgTrump, width / 1.15, height / 2.5, 150, 180)
@@ -386,7 +433,7 @@ function buttoncreate() {
     });
     button.style("font-family", "Bodoni");
     button.size(140, 70);
-    button.style('background-color', '#4CAF50');
+    button.style('background-color', '#2F574B');
     button.style('text-decoration', 'none');
     button.style('border-radius', '10px');
     button.hide();
@@ -408,7 +455,7 @@ function buttoncreateforCollect() {
     });
     button1.style("font-family", "Bodoni");
     button1.size(140, 70);
-    button1.style('background-color', '#4CAF50');
+    button1.style('background-color', '#2F574B');
     button1.style('text-decoration', 'none');
     button1.style('border-radius', '10px');
     button1.hide();
@@ -543,3 +590,32 @@ function displayTurnIndicator() {
 
 
 
+function showResend() {
+    if (table.length === 1 && !showResentImg) {
+        setTimeout(() => {
+            showResentImg = true;
+        }, 350);
+    } else if (table.length !== 1) {
+        showResentImg = false;
+    }
+
+    if (showResentImg) {
+        const centerPositions = calculateCenterPositions();
+        let pos = centerPositions[1];
+
+        // Set the border style
+        stroke(255); // White border
+        strokeWeight(4); // Border thickness
+        fill(0, 0); // Transparent fill for the rectangle
+
+        // Draw the rounded rectangle
+        rect(pos.x + 20, pos.y - 40, 100, 130, 10);
+        image(resentImg, pos.x + 45, pos.y - 15, 50, 50);
+    }
+}
+function resend() {
+    fill(255);
+    stroke(0);
+    strokeWeight(1);
+    rectMode(CORNER);
+}

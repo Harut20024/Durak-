@@ -10,11 +10,13 @@ body {
     height: 100%;
 }
 
+
+
 body {
     display: flex;
     align-items: center;
     min-height: 100vh;
-    background-color: #f7f7f7;
+    background-color: #38594D;
 }
 
 main {
