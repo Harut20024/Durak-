@@ -18,6 +18,9 @@ let tableCardsCount = 0;
 let initialTurnSet = false;
 let botAttackCout = 0
 let showResentImg = false;
+let colorChangeForResent = 255
+let allow = false
+let botCloseTwoCards = false
 
 function preload() {
     ImgCalodes = loadImage(`Images/caloda.png`);
@@ -75,7 +78,7 @@ function draw() {
     displayDeckCount();
     displayTurnIndicator();
     updatePlayerCardPositions()
-    // showResend()
+    showResend()
 
     if (movingCard) {
         let progress = movingCard.progress;
@@ -92,7 +95,9 @@ function draw() {
     if (movingCard) {
         movingCard.card.display();
     }
-
+    if (botCloseTwoCards) {
+        botRespondToDeffend()
+    }
     if (attack === "bot") {
         botRespondToAttack()
     }
@@ -126,6 +131,16 @@ function draw() {
 
     for (let card of playerCards) {
         card.display();
+        if (card.y < 360 && card.y > 240 && card.x < 380 && card.x > 240 && card.dragging === true) {
+            colorChangeForResent = 100
+            showResend()
+            allow = true
+        }
+        else if (card.dragging === true) {
+            colorChangeForResent = 255
+            allow = false
+        }
+
         if (card.y < 110) {
             fill(255);
             textSize(32);
@@ -177,32 +192,34 @@ function mouseReleased() {
                     if (table.length > 0) {
                         botCard = table[table.length - 1].cardIs;
                     }
-                    // Check if the card values are the same, but suits are different
-                    //     if (attack === "bot" && botCard && card.value === botCard.value && card.suit !== trump.suit) {
-                    //        // Add both the player's and bot's card to the table
-                    //        table.push({
-                    //         turnOf: "Player",
-                    //         tableCardsCount: PlayerCardCount,
-                    //         cardIs: card
-                    //     });
-                    //     table.push({
-                    //         turnOf: "Bot",
-                    //         tableCardsCount: BotCardCount,
-                    //         cardIs: botCard
-                    //     });
 
-                    //     // Adjust card counts and remove cards from player's hand
-                    //     PlayerCardCount++;
-                    //     BotCardCount++;
-                    //     playerCards = playerCards.filter(c => c !== card);
-                    //     botCards = botCards.filter(c => c !== botCard);
+                    if (attack === "bot" && botCard && card.value === botCard.value && allow) {
+                        table = []
+                        card.x = card.x + 110
+                        botCard.y = botCard.y + 40
+                        table.push({
+                            turnOf: "Player",
+                            tableCardsCount: PlayerCardCount,
+                            cardIs: card
+                        });
+                        table.push({
+                            turnOf: "Bot",
+                            tableCardsCount: BotCardCount,
+                            cardIs: botCard
+                        });
+                        // Adjust card counts and remove cards from player's hand
+                        PlayerCardCount++;
+                        BotCardCount++;
+                        playerCards = playerCards.filter(c => c !== card);
+                        botCloseTwoCards = true;
 
-                    //     // Force bot to respond again
-                    //     botAttackCout = 0;
-                    //     attack = "player";
-                    //     switchTurn()
-                    //     break;
-                    // }
+                        // Force bot to respond again
+                        cardIndex = table.length 
+                        botAttackCout = 0;
+                        attack = "player";
+                        switchTurn()
+                        break;
+                    }
                     if (attack === "bot") {
 
                         if ((card.suit === botCard.suit && card.value > botCard.value) || card.suit === trump.suit) {
@@ -604,7 +621,7 @@ function showResend() {
         let pos = centerPositions[1];
 
         // Set the border style
-        stroke(255); // White border
+        stroke(colorChangeForResent); // White border
         strokeWeight(4); // Border thickness
         fill(0, 0); // Transparent fill for the rectangle
 
@@ -619,3 +636,6 @@ function resend() {
     strokeWeight(1);
     rectMode(CORNER);
 }
+
+
+
