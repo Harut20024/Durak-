@@ -1,4 +1,5 @@
 # Durak
+![Durak](https://github.com/Harut20024/Durak-/blob/main/Images/screen.png)
 Welcome to our GitHub repository for an innovative digital card game. This project is an engaging blend of strategy, skill, and luck, offering an immersive experience for players and developers alike. Below, you'll find detailed information about the game's functionality, logic, and features.
 
 ## Game Overview
