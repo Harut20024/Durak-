@@ -85,44 +85,45 @@ function botRespondToDeffend(playerCard) {
             let secondCardOnTable = table[table.length - 1].cardIs; // Last card on the table
 
             // Find response cards in the bot's hand
-            let responseCard1 = findResponseCard(firstCardOnTable);
-            let responseCard2 = findResponseCard(secondCardOnTable);
+            let responseCard1 = firstCardOnTable ? findResponseCard(firstCardOnTable) : null;
+            let responseCard2 = secondCardOnTable ? findResponseCard(secondCardOnTable) : null;
+
             if (responseCard1 && responseCard2) {
                 // Bot plays both response cards
                 playBotCard(responseCard1, { x: firstCardOnTable.x, y: firstCardOnTable.y - 40 });
                 playBotCard(responseCard2, { x: secondCardOnTable.x, y: secondCardOnTable.y - 40 });
             } else {
                 allowedCards = []
-                botCards.push(firstCardOnTable, secondCardOnTable);
+                if (firstCardOnTable) botCards.push(firstCardOnTable);
+                if (secondCardOnTable) botCards.push(secondCardOnTable);
+                botCollectCards = millis()
+                botCollectCard = true
                 table.splice(table.length - 2, 2); // Remove the last two cards from the table
             }
             botCloseTwoCards = false;
         }
         switchTurn();
         attack = "player";
-    }
-    else {
+    } else {
         if (!playerCard) return; // Ensure playerCard is not undefined
 
         let responseCard = botCards.find(card => card && card.suit === playerCard.suit && card.value > playerCard.value);
-        let resentCard = botCards.find(card => card.value === playerCard.value)
+        let resentCard = botCards.find(card => card.value === playerCard.value);
+
         if (resentCard && table.length === 1 && playerCards.length >= 2) {
             // Bot resents the card
             let resentPosition = calculateCenterPositions()[1]; // Assuming this is the correct position
             playBotCard(resentCard, { x: resentPosition.x, y: resentPosition.y });
 
             // Set flags for the player to respond to two cards
-            botAttackCout = 2
+            botAttackCout = 2;
             cardIndex = 0;
             playerClose = true;
             attack = "bot";
             switchTurn();
-        }
-        else {
+        } else {
             // If no card found and player's card is not a trump, try to beat with a trump card
-            if (!responseCard && playerCard.suit === trump.suit) {
-                responseCard = botCards.find(card => card.suit === trump.suit && card.value > playerCard.value);
-            } else if (!responseCard && playerCard.suit !== trump.suit) {
+            if (!responseCard && playerCard.suit !== trump.suit) {
                 responseCard = botCards.find(card => card.suit === trump.suit);
             }
 
@@ -133,8 +134,10 @@ function botRespondToDeffend(playerCard) {
                 botCards.push(...collectedCards);
                 table = [];
                 allowedCards = []
-                cardIndex = 0
-                distributecards()
+                botCollectCards = millis()
+                botCollectCard = true
+                cardIndex = 0;
+                distributecards();
             }
 
             // Switch turn back to the player
@@ -142,6 +145,7 @@ function botRespondToDeffend(playerCard) {
         }
     }
 }
+
 
 
 let cardMovementGroups = [];
@@ -172,6 +176,18 @@ function playBotCard(card, targetPosition) {
     botCards = botCards.filter(c => c !== card);
 }
 function findResponseCard(targetCard) {
-    return botCards.find(card => card && card.suit === targetCard.suit && card.value > targetCard.value) ||
-        botCards.find(card => card.suit === trump.suit && (targetCard.suit !== trump.suit || card.value > targetCard.value));
+    if (!targetCard) return null; // Ensure targetCard is not undefined
+
+    // First, try to find a card in the bot's hand that can beat the target card
+    let beatingCard = botCards.find(card => card && card.suit === targetCard.suit && card.value > targetCard.value);
+    if (beatingCard) return beatingCard;
+
+    // If no beating card found, try to find a trump card if the target card is not a trump
+    if (targetCard.suit !== trump.suit) {
+        let trumpCard = botCards.find(card => card.suit === trump.suit);
+        if (trumpCard) return trumpCard;
+    }
+
+    // No suitable card found
+    return null;
 }

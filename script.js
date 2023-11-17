@@ -24,6 +24,24 @@ let allow = false
 let botCloseTwoCards = false
 let firstCardClosed = false; // Tracks if the first resented card has been closed
 let trumpCounter = 0
+let smailiksImg = []
+let lastTurnChangeTime;
+let buttonPressTime;
+let imageDisplayDuration = 1000; // 1 second
+let showImageIndex = 0; // Start with the 0th image
+let isButtonPressed = false;
+let showStartImage = true; // Flag to control the initial image display
+let startImageDisplayTime;
+let botCollectCard = false
+let botCollectCards
+
+let startImageDisplayTimeWin;
+let botWin = false
+let botWinner
+
+let startImageDisplayTimeLoose;
+let botLoose = false
+let botLooser
 
 function preload() {
     ImgCalodes = loadImage(`Images/caloda.png`);
@@ -53,6 +71,9 @@ function preload() {
         let deck = new Deck(suitImages, suit);
         fullDeck.push(...deck.cards);
     }
+    for (let i = 1; i < 8; i++) {
+        smailiksImg.push(loadImage(`Images/smailiks/${i}.png`))
+    }
 }
 
 
@@ -67,28 +88,55 @@ function setup() {
         playerCards.push(fullDeck.shift());
         botCards.push(fullDeck.shift());
     }
-
+    showImageIndex = 0;
+    lastTurnChangeTime = millis(); // Initialize the timer
+    startImageDisplayTime = millis();
     trump = fullDeck[fullDeck.length - 1];
     dealCards();
     turn = findSmallestTrumpCard();
     attack = turn
 
 }
-function checkboxEvent() {
-    if (this.checked()) {
-        console.log('Checking!');
-        // Code to execute when the checkbox is checked
-    } else {
-        console.log('Unchecking!');
-        // Code to execute when the checkbox is unchecked
-    }
-}
+
 function draw() {
     image(bgImage, 0, 0, width, height);
     displayDeckCount();
     displayTurnIndicator();
     updatePlayerCardPositions();
     showResend();
+
+    // Handle the initial display of the 0th image
+    if (showStartImage && millis() - startImageDisplayTime < imageDisplayDuration) {
+        image(smailiksImg[0], width / 2.1, 25, 90, 90);
+    } else if (showStartImage) {
+        showStartImage = false; // Ensure the 0th image is not shown again
+    }
+
+    // Handle image display logic for other scenarios
+    if (!showStartImage) {
+        if (isButtonPressed && millis() - buttonPressTime < imageDisplayDuration) {
+            showImageIndex = 2;
+        } else if (botCollectCard && millis() - botCollectCards < imageDisplayDuration) {
+            showImageIndex = 4;
+        }
+        else if (botWin && millis() - startImageDisplayTimeWin < imageDisplayDuration) {
+            showImageIndex = 3;
+        }
+        else if (botLoose && millis() - startImageDisplayTimeLoose < imageDisplayDuration) {
+            showImageIndex = 6;
+        }
+        else if (turn === "player" && millis() - lastTurnChangeTime > 6000) {
+            showImageIndex = 5;
+        } else {
+            showImageIndex = 1;
+        }
+        image(smailiksImg[showImageIndex], width / 2.1, 25, 90, 90);
+    }
+    // Reset the button press flag after the duration
+    if (isButtonPressed && millis() - buttonPressTime >= imageDisplayDuration) {
+        isButtonPressed = false;
+    }
+
 
     // Process each group of moving cards
     if (cardMovementGroups[currentGroupIndex] && cardMovementGroups[currentGroupIndex].length > 0) {
@@ -180,14 +228,19 @@ function checkGameEndConditions() {
     if (fullDeck.length === 0) {
         if (playerCards.length === 0) {
             drawTextWithBackground('Player Win!!!', width / 2, height / 2, 'rgba(144, 238, 144, 0.8)', 'white', 5);
+            botLoose = true;
+            startImageDisplayTimeLoose = millis(); // Start the timer for the loose image
             setTimeout(() => window.location.reload(), 2000);
         }
         else if (botCards.length === 0) {
             drawTextWithBackground('Bot Win!!!', width / 2, height / 2, 'rgba(144, 238, 144, 0.8)', 'white', 5);
+            botWin = true;
+            startImageDisplayTimeWin = millis(); // Start the timer for the win image
             setTimeout(() => window.location.reload(), 2000);
         }
     }
 }
+
 
 
 
@@ -210,10 +263,13 @@ function isValidResponse(playerCard, tableCard) {
 
     // Continue with the existing logic
     return (playerCard.suit === tableCard.suit && playerCard.value > tableCard.value) ||
-           (playerCard.suit === trump.suit && (!tableCard.suit || tableCard.suit !== trump.suit || playerCard.value > tableCard.value));
+        (playerCard.suit === trump.suit && (!tableCard.suit || tableCard.suit !== trump.suit || playerCard.value > tableCard.value));
 }
 
-
+function switchTurn() {
+    turn = (turn === "player") ? "bot" : "player";
+    lastTurnChangeTime = millis(); // Reset the timer when the turn changes
+}
 
 function mouseReleased() {
     if (turn !== "player") return;
@@ -469,7 +525,7 @@ function displayDeckCount() {
             case 'Diamonds': suitImage = diamondsImg; break;
             case 'Hearts': suitImage = heartImg; break;
         }
-        image(suitImage,imgX + width * 0.12, imgY + 10, 80, 80);
+        image(suitImage, imgX + width * 0.12, imgY + 10, 80, 80);
     }
 
     if (distributeTrump) {
@@ -552,6 +608,8 @@ function buttoncreateforCollect() {
             let collectedCards = table.map(item => item.cardIs);
             playerCards.push(...collectedCards);
             table = [];
+            buttonPressTime = millis(); // Capture the time of button press
+            isButtonPressed = true;
             allowedCards = []
             cardIndex = 0
             playerClose = false;
@@ -568,9 +626,6 @@ function buttoncreateforCollect() {
     button1.hide();
 }
 
-function switchTurn() {
-    turn = (turn === "player") ? "bot" : "player";
-}
 
 function findSmallestTrumpCard() {
     let trumpCardsBot = botCards.filter(card => card.suit === trump.suit);
@@ -691,7 +746,7 @@ function updateBotCardPositions() {
 function displayTurnIndicator() {
     fill(255);
     textSize(24);
-    text(`Current Turn: ${turn}`, width / 2, 30);
+    text(`Current Turn: ${turn}`, width / 2, 10);
 }
 
 
@@ -726,6 +781,3 @@ function resend() {
     strokeWeight(1);
     rectMode(CORNER);
 }
-
-
-
