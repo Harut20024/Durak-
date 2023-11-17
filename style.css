@@ -16,7 +16,8 @@ body {
     display: flex;
     align-items: center;
     min-height: 100vh;
-    background-color: #38594D;
+    /* background-color: #38594D; */
+    background-color: #000116;
 }
 
 main {

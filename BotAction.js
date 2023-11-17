@@ -41,7 +41,7 @@ function selectAnyCard(cards) {
 
 function selectCardToMatch(cards, suitsToMatch) {
     // Filter cards to find those that match the suits on the table or are in the allowed cards
-    let matchingCards = cards.filter(card => allowedCards.includes(card.value));
+    let matchingCards = cards.filter(card => card && allowedCards.includes(card.value));
 
     // If no matching cards, the bot cannot play a card
     if (matchingCards.length === 0) {
@@ -51,6 +51,7 @@ function selectCardToMatch(cards, suitsToMatch) {
     // Select a card with the lowest value from the matching cards
     return selectLowestValueCard(matchingCards);
 }
+
 
 
 function selectLowestValueCard(cards) {

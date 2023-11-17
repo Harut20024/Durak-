@@ -23,6 +23,7 @@ let colorChangeForResent = 255
 let allow = false
 let botCloseTwoCards = false
 let firstCardClosed = false; // Tracks if the first resented card has been closed
+let trumpCounter = 0
 
 function preload() {
     ImgCalodes = loadImage(`Images/caloda.png`);
@@ -56,7 +57,7 @@ function preload() {
 
 
 function setup() {
-    createCanvas(1000, 800);
+    createCanvas(1400, 800);
     shuffleArray(fullDeck);
     playerCards = [];
     botCards = [];
@@ -159,7 +160,7 @@ function draw() {
 }
 
 function handlePlayerCardInteractions(card) {
-    if (card.y < 360 && card.y > 240 && card.x < 380 && card.x > 240 && card.dragging === true) {
+    if (card.y < 380 && card.y > 250 && card.x < 630 && card.x > 520 && card.dragging === true) {
         colorChangeForResent = 100;
         showResend();
         allow = true;
@@ -202,35 +203,17 @@ function mousePressed() {
     }
 }
 function isValidResponse(playerCard, tableCard) {
-    // Check if the player card can beat the table card
-    return (playerCard.suit === tableCard.suit && playerCard.value > tableCard.value) ||
-        (playerCard.suit === trump.suit && (tableCard.suit !== trump.suit || (tableCard.suit === trump.suit && playerCard.value > tableCard.value)));
-}
-
-function mouseReleased() {
-    if (turn !== "player") return;
-
-    // Rest of the code remains unchanged...
-
-    if (playerClose) {
-        // Ensure the player is closing the correct card
-        let firstCardOnTable = table[table.length - 2].cardIs;
-        let secondCardOnTable = table[table.length - 1].cardIs;
-
-        // Respond to the first card
-        if (!firstCardClosed && isValidResponse(card, firstCardOnTable)) {
-            // Logic for closing the first card
-            // ...
-        } else if (firstCardClosed && isValidResponse(card, secondCardOnTable)) {
-            // Logic for closing the second card
-            // ...
-        }
-    } else {
-        // Logic for normal gameplay
-        // ...
+    // Check if tableCard is null or undefined
+    if (!tableCard) {
+        return false;
     }
-    // Rest of the code remains unchanged...
+
+    // Continue with the existing logic
+    return (playerCard.suit === tableCard.suit && playerCard.value > tableCard.value) ||
+           (playerCard.suit === trump.suit && (!tableCard.suit || tableCard.suit !== trump.suit || playerCard.value > tableCard.value));
 }
+
+
 
 function mouseReleased() {
     if (turn !== "player") return;
@@ -238,45 +221,51 @@ function mouseReleased() {
 
 
     for (let card of playerCards) {
-
         if (card.dragging) {
             card.stopDragging();
 
             if (isInCenter(card) && placeCardInCenter(card)) {
-
                 let botCard = null;
                 if (table.length > 0) {
                     botCard = table[table.length - 1].cardIs;
                 }
-                if (playerClose) {
-                    card.y += 40
-                    let firstCardOnTable = table[0].cardIs;
-                    let secondCardOnTable = table[1].cardIs;
 
-                    // Respond to the first card
-                    if (!firstCardClosed && isValidResponse(card, firstCardOnTable)) {
-                        table.push({
-                            turnOf: "Player",
-                            tableCardsCount: PlayerCardCount,
-                            cardIs: card
-                        });
-                        playerCards = playerCards.filter(c => c !== card);
-                        updateCardCounts();
-                        firstCardClosed = true; // Mark the first card as closed
-                    }
-                    // Respond to the second card only after the first card has been closed
-                    else if (firstCardClosed && isValidResponse(card, secondCardOnTable)) {
-                        table.push({
-                            turnOf: "Player",
-                            tableCardsCount: PlayerCardCount,
-                            cardIs: card
-                        });
-                        playerCards = playerCards.filter(c => c !== card);
-                        updateCardCounts();
-                        firstCardClosed = false;
-                        playerClose = false;
-                        attack = "bot";
-                        switchTurn();
+                if (playerClose) {
+                    // Ensure that there are at least two cards on the table before attempting to close
+                    let firstCardOnTable = table.length >= 2 ? table[0].cardIs : null;
+                    let secondCardOnTable = table.length >= 2 ? table[1].cardIs : null;
+
+                    // Check that both cards are not null
+                    if (firstCardOnTable && secondCardOnTable) {
+                        // Respond to the first card
+                        if (!firstCardClosed && isValidResponse(card, firstCardOnTable)) {
+                            card.y += 40;
+                            table.push({
+                                turnOf: "Player",
+                                tableCardsCount: PlayerCardCount,
+                                cardIs: card
+                            });
+                            playerCards = playerCards.filter(c => c !== card);
+                            updateCardCounts();
+                            allowedCards.push(card.value)
+                            firstCardClosed = true; // Mark the first card as closed
+                        }
+                        // Respond to the second card only after the first card has been closed
+                        else if (firstCardClosed && isValidResponse(card, secondCardOnTable)) {
+                            card.y -= 40; // Adjusting the y position back
+                            table.push({
+                                turnOf: "Player",
+                                tableCardsCount: PlayerCardCount,
+                                cardIs: card
+                            });
+                            playerCards = playerCards.filter(c => c !== card);
+                            updateCardCounts();
+                            firstCardClosed = false;
+                            playerClose = false;
+                            allowedCards.push(card.value)
+                            attack = "bot";
+                            switchTurn();
+                        }
                     }
                 }
                 else if (attack === "bot" && botCard && card.value === botCard.value && allow) {
@@ -460,40 +449,48 @@ function isInCenter(card, tolerance = 400) {
 
 function displayDeckCount() {
     let count = fullDeck.length;
-    let imgX = 10;
-    let imgY = height / 2 - ImgCalodes.height / 2 + 200;
+    let imgX = width * 0.06; // 6% from the left side of the canvas
+    let imgY = height * 0.5 - ImgCalodes.height / 2 + 200; // Vertically centered
 
     if (fullDeck.length > 1) {
         push();
-        translate(imgX + 100, imgY + 90);
-        rotate(radians(230));
-        image(trump.img, -20, 0, 90, 90);
+        translate(imgX + width * 0.225, imgY + 45); // Adjusted for dynamic width
+        rotate(radians(90));
+        image(trump.img, -20, 0, 80, 110);
         pop();
     } else if (fullDeck.length === 1) {
-        image(trump.img, imgX + 20, imgY - 20, 80, 110);
+        image(trump.img, imgX + width * 0.12, imgY + 10, 90, 110);
+    } else {
+        // Show the trump suit image when no cards are left in the deck
+        let suitImage;
+        switch (trump.suit) {
+            case 'Spades': suitImage = spadesImg; break;
+            case 'Clubs': suitImage = clubsImg; break;
+            case 'Diamonds': suitImage = diamondsImg; break;
+            case 'Hearts': suitImage = heartImg; break;
+        }
+        image(suitImage,imgX + width * 0.12, imgY + 10, 80, 80);
     }
-    else {
-        trump.suit === 'Spades' ? image(spadesImg, imgX + 20, imgY - 20, 80, 80) :
-            trump.suit === 'Clubs' ? image(clubsImg, imgX + 20, imgY - 20, 80, 80) :
-                trump.suit === 'Diamonds' ? image(diamondsImg, imgX + 20, imgY - 20, 80, 80) :
-                    image(heartImg, imgX + 20, imgY - 20, 80, 80)
-        60
-    }
-    if (distributeTrump) {
-        image(ImgTrump, width / 1.15, height / 2, 150, 180);
-        image(ImgTrump, width / 1.15, height / 2.2, 150, 180)
-        image(ImgTrump, width / 1.2, height / 2.2, 150, 180)
-        image(ImgTrump, width / 1.15, height / 2.5, 150, 180)
 
+    if (distributeTrump) {
+        // Display trump images dynamically based on width
+        if (trumpCounter === 0) image(ImgTrump, width * 0.74, height * 0.42, 120, 180);
+        if (trumpCounter >= 1) image(ImgTrump, width * 0.74, height * 0.44, 120, 180);
+        if (trumpCounter >= 2) image(ImgTrump, width * 0.74, height * 0.46, 120, 180);
+        if (trumpCounter >= 3) image(ImgTrump, width * 0.74, height * 0.4, 120, 180);
+        if (trumpCounter >= 4) image(ImgTrump, width * 0.72, height * 0.36, 120, 180);
     }
-    if (fullDeck.length > 1) image(ImgCalodes, imgX, imgY, 140, 140);
+    if (fullDeck.length > 1) {
+        image(ImgCalodes, imgX * 2.6, imgY, 140, 140);
+    }
 
     fill(255);
     noStroke();
     textSize(24);
     textAlign(CENTER, CENTER);
-    text(count, imgX + 60, imgY + 140);
+    text(count, imgX + width * 0.15, imgY + 140); // Adjusted for dynamic width
 }
+
 
 
 
@@ -510,7 +507,7 @@ function dealCards() {
     }
 
     let botStartX = (width - (botCards.length * 110)) / 2;
-    let botStartY = 100; // Adjust as needed for visibility
+    let botStartY = 80; // Adjust as needed for visibility
 
     // Position the bot's cards at the top of the canvas
     for (let i = 0; i < botCards.length; i++) {
@@ -536,20 +533,20 @@ function sortCards(a, b) {
 
 function buttoncreate() {
     button = createButton("Discard");
-    button.position(width / 1.12, height / 1.4);
+    button.position(width / 1.6, height / 1.4);
     button.mousePressed(() => {
         if (table.length !== 0) discardCards()
     });
     button.style("font-family", "Bodoni");
     button.size(140, 70);
-    button.style('background-color', '#2F574B');
+    button.style('background-color', '#033975');
     button.style('text-decoration', 'none');
     button.style('border-radius', '10px');
     button.hide();
 }
 function buttoncreateforCollect() {
     button1 = createButton("Collect");
-    button1.position(width / 1.12, height / 1.4);
+    button1.position(width / 1.6, height / 1.4);
     button1.mousePressed(() => {
         if (table.length !== 0) {
             let collectedCards = table.map(item => item.cardIs);
@@ -557,6 +554,7 @@ function buttoncreateforCollect() {
             table = [];
             allowedCards = []
             cardIndex = 0
+            playerClose = false;
             distributecards()
             turn = "bot"
             botAttackCout = 0
@@ -564,7 +562,7 @@ function buttoncreateforCollect() {
     });
     button1.style("font-family", "Bodoni");
     button1.size(140, 70);
-    button1.style('background-color', '#2F574B');
+    button1.style('background-color', '#033975');
     button1.style('text-decoration', 'none');
     button1.style('border-radius', '10px');
     button1.hide();
@@ -637,7 +635,7 @@ function discardCards() {
     distributecards()
     updatePlayerCardPositions();
     updateBotCardPositions();
-
+    trumpCounter++
     switchTurn();
     attack = "bot"
     redraw();
