@@ -86,13 +86,11 @@ function botRespondToDeffend(playerCard) {
             // Find response cards in the bot's hand
             let responseCard1 = findResponseCard(firstCardOnTable);
             let responseCard2 = findResponseCard(secondCardOnTable);
-
             if (responseCard1 && responseCard2) {
                 // Bot plays both response cards
-                playBotCard(responseCard2, { x: secondCardOnTable.x, y: secondCardOnTable.y - 40 });
                 playBotCard(responseCard1, { x: firstCardOnTable.x, y: firstCardOnTable.y - 40 });
+                playBotCard(responseCard2, { x: secondCardOnTable.x, y: secondCardOnTable.y - 40 });
             } else {
-                // Bot takes the cards from the table if it cannot respond
                 allowedCards = []
                 botCards.push(firstCardOnTable, secondCardOnTable);
                 table.splice(table.length - 2, 2); // Remove the last two cards from the table
@@ -106,50 +104,70 @@ function botRespondToDeffend(playerCard) {
         if (!playerCard) return; // Ensure playerCard is not undefined
 
         let responseCard = botCards.find(card => card && card.suit === playerCard.suit && card.value > playerCard.value);
-        // If no card found and player's card is not a trump, try to beat with a trump card
-        if (!responseCard && playerCard.suit === trump.suit) {
-            responseCard = botCards.find(card => card.suit === trump.suit && card.value > playerCard.value);
-        } else if (!responseCard && playerCard.suit !== trump.suit) {
-            responseCard = botCards.find(card => card.suit === trump.suit);
-        }
+        let resentCard = botCards.find(card => card.value === playerCard.value)
+        if (resentCard && table.length === 1 && playerCards.length >= 2) {
+            // Bot resents the card
+            let resentPosition = calculateCenterPositions()[1]; // Assuming this is the correct position
+            playBotCard(resentCard, { x: resentPosition.x, y: resentPosition.y });
 
-        if (responseCard) {
-            playBotCard(responseCard, { x: playerCard.x, y: playerCard.y - 40 });
-        } else {
-            let collectedCards = table.map(item => item.cardIs);
-            botCards.push(...collectedCards);
-            table = [];
-            allowedCards = []
-            cardIndex = 0
-            distributecards()
+            // Set flags for the player to respond to two cards
+            botAttackCout = 2
+            cardIndex = 0;
+            playerClose = true;
+            attack = "bot";
+            switchTurn();
         }
+        else {
+            // If no card found and player's card is not a trump, try to beat with a trump card
+            if (!responseCard && playerCard.suit === trump.suit) {
+                responseCard = botCards.find(card => card.suit === trump.suit && card.value > playerCard.value);
+            } else if (!responseCard && playerCard.suit !== trump.suit) {
+                responseCard = botCards.find(card => card.suit === trump.suit);
+            }
 
-        // Switch turn back to the player
-        turn = "player";
+            if (responseCard) {
+                playBotCard(responseCard, { x: playerCard.x, y: playerCard.y - 40 });
+            } else {
+                let collectedCards = table.map(item => item.cardIs);
+                botCards.push(...collectedCards);
+                table = [];
+                allowedCards = []
+                cardIndex = 0
+                distributecards()
+            }
+
+            // Switch turn back to the player
+            turn = "player";
+        }
     }
 }
 
 
+let cardMovementGroups = [];
+let currentGroupIndex = 0;
+
+// Modified playBotCard function to use queue
 function playBotCard(card, targetPosition) {
-    movingCard = {
+    if (!cardMovementGroups[currentGroupIndex]) {
+        cardMovementGroups[currentGroupIndex] = [];
+    }
+    cardMovementGroups[currentGroupIndex].push({
         card: card,
-        startX: card.x || 0, // Use 0 as default if undefined
-        startY: card.y || 0, // Use 0 as default if undefined
-        targetX: targetPosition.x || 0, // Use 0 as default if undefined
-        targetY: targetPosition.y || 0, // Use 0 as default if undefined
+        startX: card.x || 0,
+        startY: card.y || 0,
+        targetX: targetPosition.x || 0,
+        targetY: targetPosition.y || 0,
         progress: 0
-    };
-
-
+    });
 
     card.inPlay = true;
     table.push({
         turnOf: "Bot",
         tableCardsCount: BotCardCount,
         cardIs: card
-    })
-    allowedCards.push(card.value)
-    BotCardCount++
+    });
+    allowedCards.push(card.value);
+    BotCardCount++;
     botCards = botCards.filter(c => c !== card);
 }
 function findResponseCard(targetCard) {

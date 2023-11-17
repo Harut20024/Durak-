@@ -5,6 +5,7 @@ let fullDeck = [];
 let ImgCalodes, ImgTrump, clubsImg, diamondsImg, heartImg, spadesImg, resentImg, bgImage;
 let turn;
 let attack;
+let playerClose = false
 let trump;
 let table = [];
 let button, button1
@@ -21,6 +22,7 @@ let showResentImg = false;
 let colorChangeForResent = 255
 let allow = false
 let botCloseTwoCards = false
+let firstCardClosed = false; // Tracks if the first resented card has been closed
 
 function preload() {
     ImgCalodes = loadImage(`Images/caloda.png`);
@@ -70,56 +72,75 @@ function setup() {
     turn = findSmallestTrumpCard();
     attack = turn
 
-
 }
-
+function checkboxEvent() {
+    if (this.checked()) {
+        console.log('Checking!');
+        // Code to execute when the checkbox is checked
+    } else {
+        console.log('Unchecking!');
+        // Code to execute when the checkbox is unchecked
+    }
+}
 function draw() {
     image(bgImage, 0, 0, width, height);
     displayDeckCount();
     displayTurnIndicator();
-    updatePlayerCardPositions()
-    showResend()
+    updatePlayerCardPositions();
+    showResend();
 
-    if (movingCard) {
-        let progress = movingCard.progress;
-        movingCard.card.x = lerp(movingCard.startX, movingCard.targetX, progress);
-        movingCard.card.y = lerp(movingCard.startY, movingCard.targetY, progress);
-        movingCard.progress += 0.05;
+    // Process each group of moving cards
+    if (cardMovementGroups[currentGroupIndex] && cardMovementGroups[currentGroupIndex].length > 0) {
+        for (let movement of cardMovementGroups[currentGroupIndex]) {
+            let card = movement.card;
+            card.x = lerp(movement.startX, movement.targetX, movement.progress);
+            card.y = lerp(movement.startY, movement.targetY, movement.progress);
+            movement.progress += 0.05;
 
-        if (movingCard.progress >= 1) {
-            movingCard.card.x = movingCard.targetX;
-            movingCard.card.y = movingCard.targetY;
-            movingCard = null; // Stop moving the card
+            if (movement.progress >= 1) {
+                card.x = movement.targetX;
+                card.y = movement.targetY;
+                const index = cardMovementGroups[currentGroupIndex].indexOf(movement);
+                cardMovementGroups[currentGroupIndex].splice(index, 1);
+            }
+            card.display();
+        }
+
+        if (cardMovementGroups[currentGroupIndex].length === 0) {
+            currentGroupIndex++; // Move to the next group of movements
         }
     }
-    if (movingCard) {
-        movingCard.card.display();
-    }
+
     if (botCloseTwoCards) {
-        botRespondToDeffend()
+        botRespondToDeffend();
     }
+
     if (attack === "bot") {
-        botRespondToAttack()
+        botRespondToAttack();
     }
+
     if (turn === "player" && attack === "player") {
         button.show();
     } else {
         button.hide();
     }
+
     if (turn === "player" && attack === "bot") {
         button1.show();
     } else {
         button1.hide();
     }
+
     if (tableCardsCount === 6) {
-        discardCards()
-        tableCardsCount = 0
+        discardCards();
+        tableCardsCount = 0;
     }
 
-    updateBotCardPositions()
+    updateBotCardPositions();
     for (let card of botCards) {
         if (card) card.display();
     }
+
     for (let item of table) {
         if (item.cardIs && typeof item.cardIs.display === 'function') {
             item.cardIs.display();
@@ -128,26 +149,33 @@ function draw() {
         }
     }
 
-
     for (let card of playerCards) {
         card.display();
-        if (card.y < 360 && card.y > 240 && card.x < 380 && card.x > 240 && card.dragging === true) {
-            colorChangeForResent = 100
-            showResend()
-            allow = true
-        }
-        else if (card.dragging === true) {
-            colorChangeForResent = 255
-            allow = false
-        }
-
-        if (card.y < 110) {
-            fill(255);
-            textSize(32);
-            drawTextWithBackground("Don't show your cards to the Bot", width / 2, height / 2, 'rgba(255, 255, 255, 0.8)', 'black', 5);
-        }
-
+        handlePlayerCardInteractions(card);
     }
+
+    checkGameEndConditions();
+    resend();
+}
+
+function handlePlayerCardInteractions(card) {
+    if (card.y < 360 && card.y > 240 && card.x < 380 && card.x > 240 && card.dragging === true) {
+        colorChangeForResent = 100;
+        showResend();
+        allow = true;
+    } else if (card.dragging === true) {
+        colorChangeForResent = 255;
+        allow = false;
+    }
+
+    if (card.y < 110) {
+        fill(255);
+        textSize(32);
+        drawTextWithBackground("Don't show your cards to the Bot", width / 2, height / 2, 'rgba(255, 255, 255, 0.8)', 'black', 5);
+    }
+}
+
+function checkGameEndConditions() {
     if (fullDeck.length === 0) {
         if (playerCards.length === 0) {
             drawTextWithBackground('Player Win!!!', width / 2, height / 2, 'rgba(144, 238, 144, 0.8)', 'white', 5);
@@ -158,10 +186,8 @@ function draw() {
             setTimeout(() => window.location.reload(), 2000);
         }
     }
-    resend()
-
-
 }
+
 
 
 
@@ -175,6 +201,36 @@ function mousePressed() {
         }
     }
 }
+function isValidResponse(playerCard, tableCard) {
+    // Check if the player card can beat the table card
+    return (playerCard.suit === tableCard.suit && playerCard.value > tableCard.value) ||
+        (playerCard.suit === trump.suit && (tableCard.suit !== trump.suit || (tableCard.suit === trump.suit && playerCard.value > tableCard.value)));
+}
+
+function mouseReleased() {
+    if (turn !== "player") return;
+
+    // Rest of the code remains unchanged...
+
+    if (playerClose) {
+        // Ensure the player is closing the correct card
+        let firstCardOnTable = table[table.length - 2].cardIs;
+        let secondCardOnTable = table[table.length - 1].cardIs;
+
+        // Respond to the first card
+        if (!firstCardClosed && isValidResponse(card, firstCardOnTable)) {
+            // Logic for closing the first card
+            // ...
+        } else if (firstCardClosed && isValidResponse(card, secondCardOnTable)) {
+            // Logic for closing the second card
+            // ...
+        }
+    } else {
+        // Logic for normal gameplay
+        // ...
+    }
+    // Rest of the code remains unchanged...
+}
 
 function mouseReleased() {
     if (turn !== "player") return;
@@ -186,102 +242,128 @@ function mouseReleased() {
         if (card.dragging) {
             card.stopDragging();
 
-            if (isInCenter(card)) {
-                if (placeCardInCenter(card)) {
-                    let botCard = null;
-                    if (table.length > 0) {
-                        botCard = table[table.length - 1].cardIs;
-                    }
+            if (isInCenter(card) && placeCardInCenter(card)) {
 
-                    if (attack === "bot" && botCard && card.value === botCard.value && allow) {
-                        table = []
-                        card.x = card.x + 110
-                        botCard.y = botCard.y + 40
+                let botCard = null;
+                if (table.length > 0) {
+                    botCard = table[table.length - 1].cardIs;
+                }
+                if (playerClose) {
+                    card.y += 40
+                    let firstCardOnTable = table[0].cardIs;
+                    let secondCardOnTable = table[1].cardIs;
+
+                    // Respond to the first card
+                    if (!firstCardClosed && isValidResponse(card, firstCardOnTable)) {
                         table.push({
                             turnOf: "Player",
                             tableCardsCount: PlayerCardCount,
                             cardIs: card
                         });
-                        table.push({
-                            turnOf: "Bot",
-                            tableCardsCount: BotCardCount,
-                            cardIs: botCard
-                        });
-                        // Adjust card counts and remove cards from player's hand
-                        PlayerCardCount++;
-                        BotCardCount++;
                         playerCards = playerCards.filter(c => c !== card);
-                        botCloseTwoCards = true;
-
-                        // Force bot to respond again
-                        cardIndex = table.length 
-                        botAttackCout = 0;
-                        attack = "player";
-                        switchTurn()
-                        break;
+                        updateCardCounts();
+                        firstCardClosed = true; // Mark the first card as closed
                     }
-                    if (attack === "bot") {
+                    // Respond to the second card only after the first card has been closed
+                    else if (firstCardClosed && isValidResponse(card, secondCardOnTable)) {
+                        table.push({
+                            turnOf: "Player",
+                            tableCardsCount: PlayerCardCount,
+                            cardIs: card
+                        });
+                        playerCards = playerCards.filter(c => c !== card);
+                        updateCardCounts();
+                        firstCardClosed = false;
+                        playerClose = false;
+                        attack = "bot";
+                        switchTurn();
+                    }
+                }
+                else if (attack === "bot" && botCard && card.value === botCard.value && allow) {
+                    table = []
+                    card.x = card.x + 110
+                    botCard.y = botCard.y + 40
+                    table.push({
+                        turnOf: "Player",
+                        tableCardsCount: PlayerCardCount,
+                        cardIs: card
+                    });
+                    table.push({
+                        turnOf: "Bot",
+                        tableCardsCount: BotCardCount,
+                        cardIs: botCard
+                    });
+                    // Adjust card counts and remove cards from player's hand
+                    PlayerCardCount++;
+                    BotCardCount++;
+                    playerCards = playerCards.filter(c => c !== card);
+                    botCloseTwoCards = true;
 
-                        if ((card.suit === botCard.suit && card.value > botCard.value) || card.suit === trump.suit) {
-                            if (botCard.suit === trump.suit && card.value < botCard.value) break
-                            else {
-                                table.push({
-                                    turnOf: "Player",
-                                    tableCardsCount: PlayerCardCount,
-                                    cardIs: card
-                                });
-                                cardIndex++
-                                tableCardsCount++;
-                                PlayerCardCount++;
-                                playerCardToBot = card;
-                                playerCards = playerCards.filter(c => c !== card);
-                                switchTurn();
-                                allowedCards.push(card.value);
-                                break;
-                            }
+                    // Force bot to respond again
+                    cardIndex = table.length
+                    botAttackCout = 0;
+                    attack = "player";
+                    switchTurn()
+                    break;
+                }
+                else if (attack === "bot") {
+                    if ((card.suit === botCard.suit && card.value > botCard.value) || card.suit === trump.suit) {
+                        if (botCard.suit === trump.suit && card.value < botCard.value) break
+                        else {
+                            table.push({
+                                turnOf: "Player",
+                                tableCardsCount: PlayerCardCount,
+                                cardIs: card
+                            });
+                            cardIndex++
+                            tableCardsCount++;
+                            PlayerCardCount++;
+                            playerCardToBot = card;
+                            playerCards = playerCards.filter(c => c !== card);
+                            switchTurn();
+                            allowedCards.push(card.value);
+                            break;
                         }
                     }
-                    else if (allowedCards.length === 0 && attack === "player") {
+                }
+                else if (allowedCards.length === 0 && attack === "player") {
+                    table.push({
+                        turnOf: "Player",
+                        tableCardsCount: PlayerCardCount,
+                        cardIs: card
+                    })
+                    cardIndex++
+                    PlayerCardCount++
+                    tableCardsCount++
+                    playerCardToBot = card;
+                    playerCards = playerCards.filter(c => c !== card);
+                    switchTurn();
+                    allowedCards.push(card.value)
+                    break;
+                }
+                else {
+                    if (allowedCards.includes(card.value)) {
                         table.push({
                             turnOf: "Player",
                             tableCardsCount: PlayerCardCount,
                             cardIs: card
                         })
                         cardIndex++
-                        PlayerCardCount++
                         tableCardsCount++
+                        PlayerCardCount++
                         playerCardToBot = card;
                         playerCards = playerCards.filter(c => c !== card);
                         switchTurn();
                         allowedCards.push(card.value)
                         break;
                     }
-                    else {
-                        if (allowedCards.includes(card.value)) {
-                            table.push({
-                                turnOf: "Player",
-                                tableCardsCount: PlayerCardCount,
-                                cardIs: card
-                            })
-                            cardIndex++
-                            tableCardsCount++
-                            PlayerCardCount++
-                            playerCardToBot = card;
-                            playerCards = playerCards.filter(c => c !== card);
-                            switchTurn();
-                            allowedCards.push(card.value)
-                            break;
-                        }
-                    }
                 }
-            } else {
-                card.resetPosition();
             }
+        } else {
+            card.resetPosition();
         }
-
-
-
     }
+
 
     if (playerCardToBot && attack === "player") {
         botRespondToDeffend(playerCardToBot);
@@ -289,6 +371,16 @@ function mouseReleased() {
 
 }
 
+
+
+
+
+function updateCardCounts() {
+    // Update the card count and other relevant variables
+    PlayerCardCount++;
+    cardIndex++;
+    tableCardsCount++;
+}
 function drawTextWithBackground(txt, x, y, backgroundColor, borderColor, borderThickness) {
     textSize(32); // Set text size
     let txtWidth = textWidth(txt); // Corrected variable name
