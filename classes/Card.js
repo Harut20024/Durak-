@@ -15,11 +15,9 @@ class Card {
 
     display() {
         if (this.dragging) {
-            // Calculate new positions
             let newX = mouseX - this.width / 2;
             let newY = mouseY - this.height / 2;
 
-            // Constrain the new positions
             this.x = constrain(newX, 0, width - this.width);
             this.y = constrain(newY, 0, height - this.height);
         }

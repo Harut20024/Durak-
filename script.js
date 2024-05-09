@@ -22,15 +22,15 @@ let showResentImg = false;
 let colorChangeForResent = 255
 let allow = false
 let botCloseTwoCards = false
-let firstCardClosed = false; // Tracks if the first resented card has been closed
+let firstCardClosed = false;  
 let trumpCounter = 0
 let smailiksImg = []
 let lastTurnChangeTime;
 let buttonPressTime;
-let imageDisplayDuration = 1000; // 1 second
-let showImageIndex = 0; // Start with the 0th image
+let imageDisplayDuration = 1000;  
+let showImageIndex = 0; 
 let isButtonPressed = false;
-let showStartImage = true; // Flag to control the initial image display
+let showStartImage = true;  
 let startImageDisplayTime;
 let botCollectCard = false
 let botCollectCards
@@ -105,7 +105,6 @@ function draw() {
     updatePlayerCardPositions();
     showResend();
 
-    // Handle the initial display of the 0th image
     if (showStartImage && millis() - startImageDisplayTime < imageDisplayDuration) {
         image(smailiksImg[0], width / 2.1, 25, 90, 90);
     } else if (showStartImage) {
@@ -132,7 +131,6 @@ function draw() {
         }
         image(smailiksImg[showImageIndex], width / 2.1, 25, 90, 90);
     }
-    // Reset the button press flag after the duration
     if (isButtonPressed && millis() - buttonPressTime >= imageDisplayDuration) {
         isButtonPressed = false;
     }
@@ -194,7 +192,7 @@ function draw() {
         if (item.cardIs && typeof item.cardIs.display === 'function') {
             item.cardIs.display();
         } else {
-            console.error("Invalid item in table:", item); // Debugging line
+            console.error("Invalid item in table:", item); 
         }
     }
 
@@ -505,19 +503,18 @@ function isInCenter(card, tolerance = 400) {
 
 function displayDeckCount() {
     let count = fullDeck.length;
-    let imgX = width * 0.06; // 6% from the left side of the canvas
-    let imgY = height * 0.5 - ImgCalodes.height / 2 + 200; // Vertically centered
+    let imgX = width * 0.06;  
+    let imgY = height * 0.5 - ImgCalodes.height / 2 + 200;  
 
     if (fullDeck.length > 1) {
         push();
-        translate(imgX + width * 0.225, imgY + 45); // Adjusted for dynamic width
+        translate(imgX + width * 0.225, imgY + 45); 
         rotate(radians(90));
         image(trump.img, -20, 0, 80, 110);
         pop();
     } else if (fullDeck.length === 1) {
         image(trump.img, imgX + width * 0.12, imgY + 10, 90, 110);
     } else {
-        // Show the trump suit image when no cards are left in the deck
         let suitImage;
         switch (trump.suit) {
             case 'Spades': suitImage = spadesImg; break;
@@ -715,32 +712,33 @@ function updatePlayerCardPositions() {
 }
 
 function updateBotCardPositions() {
-    let startX;
-    const startY = 100;
-    let cardWidth = 110;
-    let endX = width - 25;
+    const startY = 100;  
+    const minCardWidth = 70;  
+    const maxCardWidth = 110; 
+    let cardSpacing = 5; 
 
-    if (botCards.length <= 6) {
-        startX = (width - (botCards.length * cardWidth)) / 2;
-    } else {
-        let totalWidth = botCards.length * cardWidth;
-        if (totalWidth > endX) {
-            cardWidth = (endX - 20) / botCards.length;
-            startX = 10;
-        } else {
-            let ness = (width - (6 * cardWidth)) / 2;
-            startX = ness;
-        }
+    // Calculate the space needed to display all cards without exceeding screen width
+    let totalSpaceAvailable = width - 60; // Leave some margin on both sides
+    let cardWidth = Math.min(maxCardWidth, (totalSpaceAvailable - cardSpacing * (botCards.length - 1)) / botCards.length);
+    cardWidth = Math.max(cardWidth, minCardWidth); // Ensure card width does not drop below minimum
+
+    if (cardWidth == minCardWidth && botCards.length * (cardWidth + cardSpacing) > totalSpaceAvailable) {
+        cardSpacing = (totalSpaceAvailable - (botCards.length * cardWidth)) / (botCards.length - 1);
     }
 
+    let totalCardWidth = botCards.length * (cardWidth + cardSpacing) - cardSpacing;  
+    let startX = (width - totalCardWidth) / 2; 
+
     for (let i = 0; i < botCards.length; i++) {
-        if (botCards[i]) { // Check if the card is not undefined
-            botCards[i].x = startX + i * cardWidth;
+        if (botCards[i]) {
+            botCards[i].x = startX + i * (cardWidth + cardSpacing);
             botCards[i].y = startY;
         }
     }
+
     botCards.sort(sortCards);
 }
+
 
 
 function displayTurnIndicator() {
